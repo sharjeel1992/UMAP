@@ -14,22 +14,22 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-          cache-dependency-path: |
-            **/package-lock.json
 
       - name: Install + lint/test/build (Frontend + Backend if present)
         run: |
+          set -e
+          node -v
+          npm -v
           for d in Backend Frontend; do
             if [ -f "$d/package.json" ]; then
               echo "== $d =="
               cd "$d"
-              if [ -f package-lock.json ]; then npm ci; else npm install; fi
+              npm install
               npm run lint --if-present
-              npm test --if-present
+              npm run test --if-present
               npm run build --if-present
               cd ..
             else
-              echo "Skipping $d (no package.json)"
+              echo "Skipping $d (no package.json yet)"
             fi
           done
