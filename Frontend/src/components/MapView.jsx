@@ -31,19 +31,33 @@ const VIDEO_ICON_SELECTED = L.divIcon({
   popupAnchor: [0, -40],
 })
 
+function getBounds(map) {
+  const b = map.getBounds()
+  return {
+    north: b.getNorth(),
+    south: b.getSouth(),
+    east: b.getEast(),
+    west: b.getWest(),
+  }
+}
+
 /** Inner component that fires onBoundsChange when map moves */
 function BoundsWatcher({ onBoundsChange, flyTo }) {
   const map = useMap()
+  // Use a ref so the moveend handler always calls the latest onBoundsChange
+  // even though useMapEvents captures the closure only once at mount
+  const cbRef = useRef(onBoundsChange)
+  cbRef.current = onBoundsChange
+
+  // Fire initial bounds once the map is ready
+  useEffect(() => {
+    cbRef.current(getBounds(map))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map])
 
   useMapEvents({
     moveend() {
-      const b = map.getBounds()
-      onBoundsChange({
-        north: b.getNorth(),
-        south: b.getSouth(),
-        east: b.getEast(),
-        west: b.getWest(),
-      })
+      cbRef.current(getBounds(map))
     },
   })
 
