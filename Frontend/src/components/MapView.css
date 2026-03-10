@@ -1,0 +1,43 @@
+.map-wrapper {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom video pin marker */
+.video-pin {
+  background: none;
+  border: none;
+}
+
+.video-pin__inner {
+  width: 32px;
+  height: 32px;
+  background: #1a73e8;
+  color: #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.video-pin__inner > * {
+  transform: rotate(45deg);
+}
+
+.video-pin--selected .video-pin__inner {
+  background: #e53935;
+  width: 38px;
+  height: 38px;
+}
