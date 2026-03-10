@@ -10,3 +10,5 @@ Frontend/node_modules/
 Backend/.env
 Frontend/.env
 dist/
+
+Frontend/.vite/
