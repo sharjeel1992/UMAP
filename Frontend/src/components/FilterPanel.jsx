@@ -86,7 +86,9 @@ export default function FilterPanel({ filters, onChange, videoCount, loading }) 
           <span className="results-loading">Loading videos…</span>
         ) : (
           <span className="results-count">
-            {videoCount === null ? 'Pan or search to load videos' : `${videoCount} video${videoCount !== 1 ? 's' : ''} found`}
+            {videoCount === null
+              ? 'Move the map, then click "Search this area"'
+              : `${videoCount} video${videoCount !== 1 ? 's' : ''} found`}
           </span>
         )}
       </div>

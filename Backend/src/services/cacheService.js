@@ -1,4 +1,5 @@
 const cache = new Map();
+const DEFAULT_CACHE_TTL_MS = 30 * 60 * 1000;
 
 const getCache = (key) => {
   const entry = cache.get(key);
@@ -17,7 +18,7 @@ const getCache = (key) => {
   return entry.data;
 };
 
-const setCache = (key, data, ttlMs = 5 * 60 * 1000) => {
+const setCache = (key, data, ttlMs = DEFAULT_CACHE_TTL_MS) => {
   cache.set(key, {
     data,
     expiresAt: Date.now() + ttlMs,

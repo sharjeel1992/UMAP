@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import SearchBar from './components/SearchBar.jsx'
 import FilterPanel from './components/FilterPanel.jsx'
 import MapView from './components/MapView.jsx'
@@ -6,7 +6,6 @@ import VideoList from './components/VideoList.jsx'
 import VideoDetail from './components/VideoDetail.jsx'
 import LocationModal from './components/LocationModal.jsx'
 import { geocodePlace, fetchVideos } from './api/client.js'
-import { useDebounce } from './hooks/useDebounce.js'
 import './App.css'
 
 const INITIAL_FILTERS = {
@@ -31,7 +30,9 @@ export default function App() {
   const [searchError, setSearchError] = useState(null)
 
   const [filters, setFilters] = useState(INITIAL_FILTERS)
-  const debouncedFilters = useDebounce(filters, 500)
+  const [hasBounds, setHasBounds] = useState(false)
+  const [needsSearchArea, setNeedsSearchArea] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
 
   const boundsRef = useRef(null)
   const fetchControllerRef = useRef(null)
@@ -60,6 +61,7 @@ export default function App() {
     try {
       const { place } = await geocodePlace(query)
       setFlyTo({ lat: place.lat, lng: place.lng, bbox: place.bbox })
+      setNeedsSearchArea(true)
     } catch (err) {
       setSearchError(err.message || 'Place not found.')
     } finally {
@@ -87,32 +89,55 @@ export default function App() {
         publishedAfter: activeFilters.publishedAfter,
         publishedBefore: activeFilters.publishedBefore,
       })
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted) return false
       setVideos(vids)
       setVideoCount(vids.length)
       setSelectedVideo(prev => (prev && vids.find(v => v.id === prev.id)) || null)
+      return true
     } catch (err) {
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted) return false
+
+      const isQuotaExceeded = err?.status === 429 || err?.code === 'YOUTUBE_QUOTA_EXCEEDED'
+      if (isQuotaExceeded) {
+        setVideoError(
+          err.message ||
+          'YouTube API daily quota has been reached. Please try again after midnight Pacific Time.'
+        )
+        return false
+      }
+
       setVideoError(err.message || 'Failed to load videos.')
       setVideos([])
       setVideoCount(0)
+      return false
     } finally {
       if (!controller.signal.aborted) setVideoLoading(false)
     }
   }, [])
 
-  // Trigger video fetch when debounced filters change (if we have bounds)
-  useEffect(() => {
-    if (boundsRef.current) {
-      loadVideos(boundsRef.current, debouncedFilters)
-    }
-  }, [debouncedFilters, loadVideos])
+  const handleFiltersChange = useCallback(nextFilters => {
+    setFilters(nextFilters)
+    setNeedsSearchArea(true)
+  }, [])
 
   // Map bounds changed
   const handleBoundsChange = useCallback(bounds => {
     boundsRef.current = bounds
-    loadVideos(bounds, debouncedFilters)
-  }, [debouncedFilters, loadVideos])
+    setHasBounds(true)
+    setNeedsSearchArea(true)
+  }, [])
+
+  const handleSearchArea = useCallback(async () => {
+    if (!boundsRef.current || videoLoading) return
+
+    setNeedsSearchArea(false)
+    const didSucceed = await loadVideos(boundsRef.current, filters)
+    setHasLoadedOnce(true)
+
+    if (!didSucceed) {
+      setNeedsSearchArea(true)
+    }
+  }, [filters, loadVideos, videoLoading])
 
   // ── Video selection ───────────────────────────────────────────────
   function handleVideoClick(video) {
@@ -131,7 +156,10 @@ export default function App() {
 
       {/* Top bar */}
       <header className="app-topbar">
-        <div className="app-logo">UMAP</div>
+        <button type="button" className="app-logo" aria-label="UMAP">
+          <span className="app-logo__icon" aria-hidden="true" />
+          <span className="app-logo__text">UMAP</span>
+        </button>
         <SearchBar onSearch={handleSearch} loading={searchLoading} />
         {searchError && <span className="topbar-error">{searchError}</span>}
       </header>
@@ -142,7 +170,7 @@ export default function App() {
         <div className="app-sidebar">
           <FilterPanel
             filters={filters}
-            onChange={setFilters}
+            onChange={handleFiltersChange}
             videoCount={videoCount}
             loading={videoLoading}
           />
@@ -163,6 +191,9 @@ export default function App() {
             onVideoClick={handleVideoClick}
             onBoundsChange={handleBoundsChange}
             flyTo={flyTo}
+            showSearchAreaButton={hasBounds && (!hasLoadedOnce || needsSearchArea)}
+            onSearchArea={handleSearchArea}
+            searchAreaLoading={videoLoading}
           />
           {selectedVideo && (
             <VideoDetail video={selectedVideo} onClose={handleCloseDetail} />

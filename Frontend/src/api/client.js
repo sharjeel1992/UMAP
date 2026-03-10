@@ -1,10 +1,22 @@
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
 
+class ApiError extends Error {
+  constructor(message, { status, code } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.code = code
+  }
+}
+
 async function apiFetch(path) {
   const res = await fetch(`${BASE_URL}${path}`)
   const data = await res.json()
   if (!res.ok) {
-    throw new Error(data?.error?.message || `Request failed: ${res.status}`)
+    throw new ApiError(data?.error?.message || `Request failed: ${res.status}`, {
+      status: res.status,
+      code: data?.error?.code,
+    })
   }
   return data
 }

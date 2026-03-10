@@ -3,6 +3,59 @@ const VIDEOS_URL = "https://www.googleapis.com/youtube/v3/videos";
 
 const ALLOWED_SORTS = new Set(["date", "relevance", "viewCount"]);
 
+class YoutubeApiError extends Error {
+  constructor(message, { statusCode = 502, code = "YOUTUBE_API_ERROR" } = {}) {
+    super(message);
+    this.name = "YoutubeApiError";
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
+
+const parseErrorBody = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    try {
+      const text = await response.text();
+      if (!text) return null;
+
+      try {
+        return JSON.parse(text);
+      } catch {
+        return { rawText: text };
+      }
+    } catch {
+      return null;
+    }
+  }
+};
+
+const isQuotaExceededError = (payload) => {
+  const reasons = payload?.error?.errors
+    ?.map((entry) => entry?.reason)
+    .filter(Boolean);
+  return Array.isArray(reasons) && reasons.includes("quotaExceeded");
+};
+
+const throwYoutubeResponseError = async (response, operationLabel) => {
+  const payload = await parseErrorBody(response);
+
+  if (response.status === 403 && isQuotaExceededError(payload)) {
+    throw new YoutubeApiError(
+      "YouTube API daily quota has been reached. Please try again after midnight Pacific Time.",
+      { statusCode: 429, code: "YOUTUBE_QUOTA_EXCEEDED" }
+    );
+  }
+
+  const upstreamMessage =
+    payload?.error?.message ||
+    payload?.rawText ||
+    `Request failed with status ${response.status}`;
+
+  throw new YoutubeApiError(`${operationLabel} failed: ${upstreamMessage}`);
+};
+
 const searchVideosByLocation = async ({
   centerLat,
   centerLng,
@@ -44,8 +97,7 @@ const searchVideosByLocation = async ({
   const searchResponse = await fetch(searchUrl);
 
   if (!searchResponse.ok) {
-    const text = await searchResponse.text();
-    throw new Error(`YouTube search failed: ${text}`);
+    await throwYoutubeResponseError(searchResponse, "YouTube search");
   }
 
   const searchData = await searchResponse.json();
@@ -65,8 +117,7 @@ const searchVideosByLocation = async ({
   const videosResponse = await fetch(videosUrl);
 
   if (!videosResponse.ok) {
-    const text = await videosResponse.text();
-    throw new Error(`YouTube videos.list failed: ${text}`);
+    await throwYoutubeResponseError(videosResponse, "YouTube videos.list");
   }
 
   const videosData = await videosResponse.json();

@@ -3,11 +3,15 @@ const { searchVideosByLocation } = require("../services/youtubeService.js");
 const { getCache, setCache } = require("../services/cacheService.js");
 
 const ALLOWED_SORTS = new Set(["date", "relevance", "viewCount"]);
+const CACHE_COORDINATE_PRECISION = 2;
 
 const parseNumber = (value) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : null;
 };
+
+const normalizeCoordinateForCache = (value) =>
+  Number(value.toFixed(CACHE_COORDINATE_PRECISION));
 
 const isValidLatitude = (value) => value >= -90 && value <= 90;
 const isValidLongitude = (value) => value >= -180 && value <= 180;
@@ -26,6 +30,7 @@ const getVideos = async (req, res) => {
     const west = parseNumber(req.query.west);
 
     const { q, sort, publishedAfter, publishedBefore } = req.query;
+    const normalizedQ = (q || "").trim();
 
     // Required numeric params
     if (
@@ -134,11 +139,11 @@ const getVideos = async (req, res) => {
     }
 
     const cacheKey = JSON.stringify({
-      north,
-      south,
-      east,
-      west,
-      q: q || "",
+      north: normalizeCoordinateForCache(north),
+      south: normalizeCoordinateForCache(south),
+      east: normalizeCoordinateForCache(east),
+      west: normalizeCoordinateForCache(west),
+      q: normalizedQ,
       sort: sort || "",
       publishedAfter: publishedAfter || "",
       publishedBefore: publishedBefore || "",
@@ -167,7 +172,7 @@ const getVideos = async (req, res) => {
       centerLat,
       centerLng,
       radiusKm,
-      q,
+      q: normalizedQ,
       sort,
       publishedAfter,
       publishedBefore,
@@ -202,7 +207,7 @@ const getVideos = async (req, res) => {
           south,
           east,
           west,
-          q: q || null,
+          q: normalizedQ || null,
           sort: sort || null,
           publishedAfter: publishedAfter || null,
           publishedBefore: publishedBefore || null,
@@ -214,11 +219,19 @@ const getVideos = async (req, res) => {
 
     return res.json(responseData);
   } catch (error) {
-    return res.status(500).json({
-      error: {
-        message: error.message || "Internal server error",
-      },
-    });
+    const statusCode =
+      Number.isInteger(error?.statusCode) && error.statusCode >= 400
+        ? error.statusCode
+        : 500;
+    const errorPayload = {
+      message: error?.message || "Internal server error",
+    };
+
+    if (error?.code) {
+      errorPayload.code = error.code;
+    }
+
+    return res.status(statusCode).json({ error: errorPayload });
   }
 };
 

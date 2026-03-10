@@ -20,11 +20,43 @@
 }
 
 .app-logo {
-  font-size: 18px;
-  font-weight: 800;
-  color: #1a73e8;
-  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-radius: 999px;
+  background: #ff0000;
+  color: #fff;
+  padding: 7px 12px;
+  cursor: default;
   white-space: nowrap;
+}
+
+.app-logo__icon {
+  width: 20px;
+  height: 14px;
+  border-radius: 4px;
+  background: #fff;
+  position: relative;
+}
+
+.app-logo__icon::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-42%, -50%);
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 6px solid #ff0000;
+}
+
+.app-logo__text {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .topbar-error {

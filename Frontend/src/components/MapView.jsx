@@ -124,13 +124,35 @@ function ClusterLayer({ videos, selectedVideo, onVideoClick }) {
 
 const DEFAULT_CENTER = [47.6062, -122.3321] // Seattle fallback
 const DEFAULT_ZOOM = 11
+const MIN_ZOOM = 2
 
-export default function MapView({ videos, selectedVideo, onVideoClick, onBoundsChange, flyTo }) {
+export default function MapView({
+  videos,
+  selectedVideo,
+  onVideoClick,
+  onBoundsChange,
+  flyTo,
+  showSearchAreaButton,
+  onSearchArea,
+  searchAreaLoading,
+}) {
   return (
     <div className="map-wrapper">
+      {showSearchAreaButton && (
+        <button
+          type="button"
+          className="search-area-button"
+          onClick={onSearchArea}
+          disabled={searchAreaLoading}
+        >
+          {searchAreaLoading ? 'Loading…' : 'Search this area'}
+        </button>
+      )}
+
       <MapContainer
         center={DEFAULT_CENTER}
         zoom={DEFAULT_ZOOM}
+        minZoom={MIN_ZOOM}
         className="leaflet-map"
         zoomControl={true}
       >

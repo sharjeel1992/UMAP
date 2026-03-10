@@ -24,7 +24,7 @@ export default function VideoList({ videos, selectedVideo, onVideoClick, loading
     return (
       <div className="video-list video-list--state">
         <p className="state-icon">🎬</p>
-        <p className="state-text">No videos found here.<br />Try panning the map or changing filters.</p>
+        <p className="state-text">No videos found here.<br />Try moving the map, then click "Search this area".</p>
       </div>
     )
   }
