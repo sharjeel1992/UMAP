@@ -24,11 +24,19 @@ const getGeocode = async (req, res) => {
 
     return res.json({ place });
   } catch (error) {
-    return res.status(500).json({
-      error: {
-        message: error.message || "Internal server error",
-      },
-    });
+    const statusCode =
+      Number.isInteger(error?.statusCode) && error.statusCode >= 400
+        ? error.statusCode
+        : 500;
+    const errorPayload = {
+      message: error?.message || "Internal server error",
+    };
+
+    if (error?.code) {
+      errorPayload.code = error.code;
+    }
+
+    return res.status(statusCode).json({ error: errorPayload });
   }
 };
 

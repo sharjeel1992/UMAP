@@ -9,14 +9,48 @@ class ApiError extends Error {
   }
 }
 
-async function apiFetch(path) {
-  const res = await fetch(`${BASE_URL}${path}`)
-  const data = await res.json()
+async function parseResponseData(res) {
+  const contentType = res.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+
+  if (isJson) {
+    try {
+      return await res.json()
+    } catch {
+      return null
+    }
+  }
+
+  try {
+    const text = await res.text()
+    return text ? { rawText: text } : null
+  } catch {
+    return null
+  }
+}
+
+async function apiFetch(path, { signal } = {}) {
+  let res
+  try {
+    res = await fetch(`${BASE_URL}${path}`, { signal })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw error
+    }
+    throw new ApiError('Unable to reach the server. Please check your connection and try again.')
+  }
+
+  const data = await parseResponseData(res)
   if (!res.ok) {
-    throw new ApiError(data?.error?.message || `Request failed: ${res.status}`, {
-      status: res.status,
-      code: data?.error?.code,
-    })
+    throw new ApiError(
+      data?.error?.message ||
+      data?.rawText ||
+      `Request failed: ${res.status}`,
+      {
+        status: res.status,
+        code: data?.error?.code,
+      }
+    )
   }
   return data
 }
@@ -35,11 +69,21 @@ export async function geocodePlace(q) {
  * @param {{ north, south, east, west, q?, sort?, publishedAfter?, publishedBefore? }} params
  * @returns {{ videos: Video[], meta: object }}
  */
-export async function fetchVideos({ north, south, east, west, q, sort, publishedAfter, publishedBefore }) {
+export async function fetchVideos({
+  north,
+  south,
+  east,
+  west,
+  q,
+  sort,
+  publishedAfter,
+  publishedBefore,
+  signal,
+}) {
   const params = new URLSearchParams({ north, south, east, west })
   if (q) params.set('q', q)
   if (sort) params.set('sort', sort)
   if (publishedAfter) params.set('publishedAfter', publishedAfter)
   if (publishedBefore) params.set('publishedBefore', publishedBefore)
-  return apiFetch(`/api/videos?${params}`)
+  return apiFetch(`/api/videos?${params}`, { signal })
 }

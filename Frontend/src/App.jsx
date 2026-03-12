@@ -88,6 +88,7 @@ export default function App() {
         sort: activeFilters.sort || undefined,
         publishedAfter: activeFilters.publishedAfter,
         publishedBefore: activeFilters.publishedBefore,
+        signal: controller.signal,
       })
       if (controller.signal.aborted) return false
       setVideos(vids)
